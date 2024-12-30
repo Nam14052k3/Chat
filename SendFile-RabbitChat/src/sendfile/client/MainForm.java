@@ -10,6 +10,8 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 import java.net.URL;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Iterator;
 import java.util.Vector;
 import javax.swing.Icon;
@@ -94,9 +96,15 @@ public class MainForm extends javax.swing.JFrame {
     */
     public void appendMessage(String msg, String header, Color headerColor, Color contentColor){
         jTextPane1.setEditable(true);
-        getMsgHeader(header, headerColor);
-        getMsgContent(msg, contentColor);
-        jTextPane1.setEditable(false);
+        // Lấy thời gian hiện tại
+    LocalDateTime now = LocalDateTime.now();
+    DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+    String timestamp = dtf.format(now);
+    // Hiển thị tiêu đề với thời gian
+    getMsgHeader(header + " [" + timestamp + "]", headerColor);
+        // Hiển thị nội dung tin nhắn
+    getMsgContent(msg, contentColor);
+    jTextPane1.setEditable(false);
     }
     
     /*
@@ -104,9 +112,16 @@ public class MainForm extends javax.swing.JFrame {
     */
     public void appendMyMessage(String msg, String header){
         jTextPane1.setEditable(true);
-        getMsgHeader(header, Color.GREEN);
-        getMsgContent(msg, Color.BLACK);
-        jTextPane1.setEditable(false);
+        // Lấy thời gian hiện tại
+        LocalDateTime now = LocalDateTime.now();
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+        String timestamp = dtf.format(now);
+        // Hiển thị tiêu đề với thời gian
+    getMsgHeader(header + " [" + timestamp + "]", Color.GREEN);
+    // Hiển thị nội dung tin nhắn
+    getMsgContent(msg, Color.BLACK);
+
+    jTextPane1.setEditable(false);
     }
     
     /*
