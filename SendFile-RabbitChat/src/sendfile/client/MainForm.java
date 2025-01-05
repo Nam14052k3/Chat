@@ -10,6 +10,11 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 import java.net.URL;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Iterator;
@@ -55,6 +60,11 @@ public class MainForm extends javax.swing.JFrame {
         setTitle("Bạn đang được đăng nhập với tên: " + username);
         //Kết nối 
         connect();
+        // Load tin nhắn cũ
+    Vector<String> messages = loadMessages();
+    for (String msg : messages) {
+        appendMessage(msg, "Tin nhắn cũ", Color.GRAY, Color.GRAY);
+    }
     }
      void MyInit(){
          setLocationRelativeTo(null);
@@ -90,7 +100,68 @@ public class MainForm extends javax.swing.JFrame {
     public boolean isConnected(){
         return this.isConnected;
     }
-    
+    public static Connection getConnection() {
+    try {
+        String url = "jdbc:sqlserver://localhost:1433;databaseName=ChatApp;encrypt=true;trustServerCertificate=true";
+        String user = "sa"; // Thay bằng tên người dùng của bạn
+        String password = "123"; // Thay bằng mật khẩu của bạn
+        Connection conn = DriverManager.getConnection(url, user, password);
+        System.out.println("Kết nối thành công!");
+        return conn;
+    } catch (SQLException e) {
+        e.printStackTrace();
+        System.out.println("Lỗi kết nối cơ sở dữ liệu: " + e.getMessage());
+        return null;
+    }
+}
+
+
+    // ham load tin nhăn ve database
+    public static Vector<String> loadMessages() {
+    Vector<String> messages = new Vector<>();
+    try (Connection connection = getConnection()) {
+        String query = "SELECT username, content, timestamp FROM messages ORDER BY timestamp ASC";
+        PreparedStatement stmt = connection.prepareStatement(query);
+        ResultSet rs = stmt.executeQuery();
+        while (rs.next()) {
+            String username = rs.getString("username");
+            String message = rs.getString("content");
+            String timestamp = rs.getString("timestamp");
+            messages.add("[" + timestamp + "] " + username + ": " + message);
+        }
+    } catch (SQLException e) {
+        e.printStackTrace();
+    }
+    return messages;
+}
+// Phương thức lưu tin nhắn vào cơ sở dữ liệu
+public static void saveMessage(String username, String content) {
+    try (Connection connection = getConnection()) {
+        if (connection == null) {
+            System.out.println("Không thể kết nối với cơ sở dữ liệu.");
+            return;
+        }
+
+        // Câu lệnh SQL để lưu tin nhắn vào cơ sở dữ liệu
+        String query = "INSERT INTO messages (username, content, timestamp) VALUES (?, ?, GETDATE())";
+        PreparedStatement stmt = connection.prepareStatement(query);
+
+        // Thiết lập các tham số cho câu lệnh SQL
+        stmt.setString(1, username); // Tham số 1 là username
+        stmt.setString(2, content);  // Tham số 2 là nội dung tin nhắn
+
+        // Thực thi câu lệnh và kiểm tra số dòng bị ảnh hưởng
+        int rowsAffected = stmt.executeUpdate();
+        if (rowsAffected > 0) {
+            System.out.println("Tin nhắn đã được lưu thành công.");
+        } else {
+            System.out.println("Không thể lưu tin nhắn.");
+        }
+    } catch (SQLException e) {
+        e.printStackTrace();
+        System.out.println("Có lỗi xảy ra khi lưu tin nhắn.");
+    }
+}
     /*
         Hiển thị Message
     */
@@ -208,10 +279,7 @@ public class MainForm extends javax.swing.JFrame {
     /*
       ************************************  Show Online Sample  *********************************************
     */
-    
-    
-    
-    
+   
     /*
         Get image file path
     */
@@ -495,13 +563,25 @@ public class MainForm extends javax.swing.JFrame {
     private void jButton1ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton1ActionPerformed
         // TODO add your handling code here:
         try {
-            String content = username+" "+ jTextField1.getText();
-            dos.writeUTF("CMD_CHATALL "+ content);
-            appendMyMessage(" "+jTextField1.getText(), username);
-            jTextField1.setText("");
-        } catch (IOException e) {
-            appendMessage(" Không thể gửi tin nhắn đi bây giờ, không thể kết nối đến Máy Chủ tại thời điểm này, xin vui lòng thử lại sau hoặc khởi động lại ứng dụng này.!", "Lỗi", Color.RED, Color.RED);
-        }
+        String msg = jTextField1.getText(); // Lấy nội dung tin nhắn
+        String content = username + " " + msg; // Chuỗi truyền đi
+
+        // Gửi tin nhắn tới máy chủ
+        dos.writeUTF("CMD_CHATALL " + content);
+
+        // Hiển thị tin nhắn trong giao diện của người gửi
+        appendMyMessage(msg, username);
+
+        // Lưu tin nhắn vào cơ sở dữ liệu
+        saveMessage(username, msg);
+
+        // Xóa nội dung trường nhập liệu
+        jTextField1.setText("");
+    } catch (IOException e) {
+        // Hiển thị thông báo lỗi
+        appendMessage("Không thể gửi tin nhắn đi bây giờ, không thể kết nối đến Máy Chủ tại thời điểm này, xin vui lòng thử lại sau hoặc khởi động lại ứng dụng này!", 
+                      "Lỗi", Color.RED, Color.RED);
+    }
     }//GEN-LAST:event_jButton1ActionPerformed
 
     /**
